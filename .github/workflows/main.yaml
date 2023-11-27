@@ -9,18 +9,13 @@ on:
         required: true
         type: string
         default: 2.8-head
-      keep_cluster:
-        type: boolean
-        description: "Keep the cluster afterwards?"
-        required: true
-        default: false
       destroy_runner:
         description: Destroy the auto-generated self-hosted runner
         default: true
         type: boolean
       runner_template:
         description: Runner template to use
-        default: 	hosted-providers-e2e-ci-runner-spot-x86-64-template-v1
+        default: hosted-providers-e2e-ci-runner-spot-x86-64-template-v1
         type: string
 
 jobs:
