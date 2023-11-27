@@ -1,8 +1,6 @@
 # This workflow is a reusable one called by other workflows
 name: E2E Tests workflow
 on:
-  schedule:
-    - cron: "0 0 * * *"    # runs this job at the end of every day
   workflow_dispatch:
   # Variables to set when calling this reusable workflow
     inputs:
