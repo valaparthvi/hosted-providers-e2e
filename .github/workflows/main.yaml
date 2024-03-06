@@ -20,6 +20,10 @@ on:
         description: Install hosted-provider nightly chart
         required: true
         type: boolean
+      install_rancher:
+        description: Whether Rancher should be installed during setup or if the tests will install it, in case of Chart Support or Upgrade tests.
+        default: true
+        type: boolean
       rancher_installed:
         description: Rancher details if already installed
         type: string
@@ -160,12 +164,14 @@ jobs:
           RANCHER_HOSTNAME: ${{ env.RANCHER_HOSTNAME }}
           RANCHER_PASSWORD: ${{ env.RANCHER_PASSWORD }}
         run: |
-          if [ ${{ inputs.operator_nightly_chart }} == true ]; then
-            make prepare-e2e-ci-rancher-hosted-nightly-chart
-          else
-            make prepare-e2e-ci-rancher
+          make prepare-e2e-ci-k3s
+          if [ ${{ inputs.install_rancher }} ]; then 
+            if [ ${{ inputs.operator_nightly_chart }} == true ]; then
+              make install-rancher-hosted-nightly-chart
+            else
+              make install-rancher
+            fi
           fi
-
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:

@@ -1,5 +1,5 @@
 # This workflow calls the main workflow with custom variables
-name: GKE-K8s-Chart-Support-E2E
+name: K8s-Chart-Support-E2E
 
 on:
   workflow_dispatch: # Allow running manually on demand
@@ -15,10 +15,12 @@ on:
         type: string
         default: v1.27.9+k3s1
       run_k8s_chart_support_provisioning_tests:
+        description: Run Chart Support provisioning tests
         required: true
         default: false
         type: boolean
       run_k8s_chart_support_importing_tests:
+        description: Run Chart Support import tests
         required: true
         default: false
         type: boolean
@@ -38,18 +40,25 @@ on:
         required: true
         description: Downstream cluster K8s (minor) version to test
         default: 1.28
-        type: string
+        type: number
       rancher_upgrade_version:
         description: Rancher version to upgrade for test
         default: devel/2.8
         type: string
-
+#      providers:
+#        description: Providers to test; must be comma separated list.
+#        default: [gke, eks, aks]
+#        required: false
 jobs:
-  gke-k8s-chart-support-e2e:
+  k8s-chart-support-e2e:
+    strategy:
+      matrix:
+        provider: [gke, eks, aks]
+#        provider: ${{ inputs.providers  || [gke, eks, aks] }}
     uses: ./.github/workflows/main.yaml
     secrets: inherit
     with:
-      hosted_provider: gke
+      hosted_provider: ${{ matrix.provider }}
       rancher_version: ${{ inputs.rancher_version }}
       k3s_version: ${{ inputs.k3s_version }}
       run_k8s_chart_support_provisioning_tests: ${{ inputs.run_k8s_chart_support_provisioning_tests == true }}
@@ -59,4 +68,5 @@ jobs:
       k8s_upgrade_minor_version: ${{ inputs.k8s_upgrade_minor_version }}
       rancher_upgrade_version: ${{ inputs.rancher_upgrade_version }}
       downstream_cluster_cleanup: ${{ inputs.downstream_cluster_cleanup == true || (github.event_name == 'schedule' && true) }}
+      install_rancher: false
 
