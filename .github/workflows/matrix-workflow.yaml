@@ -48,8 +48,9 @@ on:
         default: '["gke", "eks", "aks"]'
 
 jobs:
-  ReuseableMatrixJobForDeployment:
+  E2E:
     strategy:
+      fail-fast: false
       matrix:
         hosted_provider: ${{ fromJSON(inputs.hosted_providers) }}
     uses: ./.github/workflows/main.yaml
