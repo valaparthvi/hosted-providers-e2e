@@ -42,7 +42,7 @@ on:
         description: Runner template to use
         required: true
         type: string
-      downstream_k8s_version:
+      downstream_k8s_minor_version:
         description: Downstream cluster K8s version to test
         type: string
       downstream_cluster_cleanup:
@@ -67,7 +67,7 @@ env:
   QASE_RUN_COMPLETE: 1
   RANCHER_LOG_COLLECTOR: ${{ github.workspace }}/.github/scripts/collect-rancher-logs.sh
   GCP_RUNNER_ZONE: asia-south2-c
-  DOWNSTREAM_KUBERNETES_VERSION: ${{ inputs.downstream_k8s_version }}
+  DOWNSTREAM_K8S_MINOR_VERSION: ${{ inputs.downstream_k8s_minor_version }}
   DOWNSTREAM_CLUSTER_CLEANUP: ${{ inputs.downstream_cluster_cleanup }}
   QASE_HELPER: ${{ github.workspace }}/hosted/helpers/qase/helper_qase.go
 jobs:
@@ -279,7 +279,7 @@ jobs:
           echo "## General information" >> ${GITHUB_STEP_SUMMARY}
           echo "Rancher Manager Version: ${{ inputs.rancher_version }}" >> ${GITHUB_STEP_SUMMARY}
           echo "K3s on Rancher Manager: ${{ inputs.k3s_version }}" >> ${GITHUB_STEP_SUMMARY}
-          echo "Downstream ${{ inputs.hosted_provider }} version: ${{ inputs.downstream_k8s_version }}" >> ${GITHUB_STEP_SUMMARY}
+          echo "Downstream ${{ inputs.hosted_provider }} version: ${{ inputs.downstream_k8s_minor_version }}" >> ${GITHUB_STEP_SUMMARY}
 
   delete-runner:
     if: ${{ always() && inputs.destroy_runner == true }}
