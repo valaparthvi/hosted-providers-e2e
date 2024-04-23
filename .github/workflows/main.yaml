@@ -2,7 +2,7 @@
 name: (Template) E2E Tests workflow
 on:
   workflow_call:
-  # Variables to set when calling this reusable workflow
+    # Variables to set when calling this reusable workflow
     inputs:
       hosted_provider:
         description: Provider to run tests(eks/aks/gke)
@@ -48,7 +48,11 @@ on:
       downstream_cluster_cleanup:
         description: Cleanup downstream clusters after test
         type: boolean
-
+    # Job outputs to export for caller workflow
+    outputs:
+      steps_status:
+        description: Status of the executed test jobs
+        value: ${{ jobs.installation-and-e2e-tests.outputs.steps_status }}
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -116,8 +120,11 @@ jobs:
     needs: create-runner
     outputs:
       PUBLIC_IP: ${{ steps.runner-ip.outputs.PUBLIC_IP }}
+      # For this to work 'id:' in steps are mandatory!
+      steps_status: ${{ join(steps.*.conclusion, ' ') }}
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
 
       - name: Get Runner IP
@@ -135,6 +142,7 @@ jobs:
           fi
 
       - name: Install K3s / Helm / Rancher
+        id: k3s-helm-rancher-setup
         if: ${{ inputs.rancher_installed == 'hostname/password' }}
         env:
           KUBECONFIG: /etc/rancher/k3s/k3s.yaml
@@ -151,26 +159,31 @@ jobs:
           fi
 
       - name: Install Go
+        id: go-setup
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Authenticate to GCP
+        id: gcp-setup
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
       - name: Setup gcloud
+        id: gcloud-setup
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Install EKSCTL
+        id: eksctl-setup
         run: |
           # Better to always use the latest eksctl binary to avoid API version issue
           EKSCTL_GH=https://github.com/weaveworks/eksctl/releases/latest/download
           curl --location ${EKSCTL_GH}/eksctl_$(uname -s)_amd64.tar.gz | tar xz -C .
           chmod +x eksctl
           sudo mv eksctl /usr/local/bin
-            
+
       - name: Configure AWS credentials
+        id: aws-cred-setup
         uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
@@ -178,12 +191,14 @@ jobs:
           aws-region: ${{ env.EKS_REGION }}
 
       - name: Install Azure cli
+        id: azure-cli-setup
         run: |
           sudo zypper clean --all
           sudo zypper install -y azure-cli
           pip install azure-cli
 
       - name: Login to Azure
+        id: azure-login
         uses: azure/login@v2.0.0
         with:
           creds: '{"clientId":"${{ env.AKS_CLIENT_ID }}","clientSecret":"${{ env.AKS_CLIENT_SECRET }}","subscriptionId":"${{ env.AKS_SUBSCRIPTION_ID }}","tenantId":"${{ env.AKS_TENANT_ID }}"}'
@@ -195,7 +210,7 @@ jobs:
           GH_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           export QASE_RUN_DESCRIPTION="${GH_RUN_URL}"
           export QASE_RUN_NAME="${{ env.PROVIDER }}-p0-${{ inputs.rancher_version }}"
-    
+
           # Create a Qase run, get its ID
           ID=$(go run ${{ env.QASE_HELPER }} -create)
           # Export outputs for future use
@@ -204,13 +219,9 @@ jobs:
           # Just an info for debugging purposes
           echo -e "Exported values:\nQASE_RUN_ID=${ID}\nQASE_RUN_DESCRIPTION=${QASE_RUN_DESCRIPTION}\nQASE_RUN_NAME=${QASE_RUN_NAME}"
 
-      - name: Step to ensure setup was successful
-        id: ready-to-test
-        run: |
-          echo "Ready to Test"
-
       - name: Provisioning cluster tests
-        if:  ${{ (!cancelled()) && steps.ready-to-test.outcome == 'success' && inputs.run_p0_provisioning_tests == true }}
+        id: provisioning-tests
+        if:  ${{ inputs.run_p0_provisioning_tests == true }}
         env:
           RANCHER_HOSTNAME: ${{ env.RANCHER_HOSTNAME }}
           RANCHER_PASSWORD: ${{ env.RANCHER_PASSWORD }}
@@ -220,7 +231,8 @@ jobs:
           make e2e-provisioning-tests
 
       - name: Importing cluster tests
-        if: ${{  (!cancelled()) && steps.ready-to-test.outcome == 'success' && inputs.run_p0_importing_tests == true }}
+        id: import-tests
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) && inputs.run_p0_importing_tests == true }}
         env:
           RANCHER_HOSTNAME: ${{ env.RANCHER_HOSTNAME }}
           RANCHER_PASSWORD: ${{ env.RANCHER_PASSWORD }}
@@ -230,7 +242,8 @@ jobs:
           make e2e-import-tests
 
       - name: Support matrix provisioning tests
-        if: ${{  (!cancelled()) && steps.ready-to-test.outcome == 'success' && inputs.run_support_matrix_provisioning_tests == true }}
+        id: support-matrix-provisioning-tests
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) && inputs.run_support_matrix_provisioning_tests == true }}
         env:
           RANCHER_HOSTNAME: ${{ env.RANCHER_HOSTNAME }}
           RANCHER_PASSWORD: ${{ env.RANCHER_PASSWORD }}
@@ -240,7 +253,8 @@ jobs:
           make e2e-support-matrix-provisioning-tests
 
       - name: Support matrix importing tests
-        if: ${{  (!cancelled()) && steps.ready-to-test.outcome == 'success' && inputs.run_support_matrix_importing_tests == true }}
+        id: support-matrix-import-tests
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) && inputs.run_support_matrix_importing_tests == true }}
         env:
           RANCHER_HOSTNAME: ${{ env.RANCHER_HOSTNAME }}
           RANCHER_PASSWORD: ${{ env.RANCHER_PASSWORD }}
@@ -250,28 +264,31 @@ jobs:
           make e2e-support-matrix-importing-tests
 
       - name: Finalize Qase Run and publish Results
+        id: qase-push
         env:
           QASE_RUN_ID: ${{ steps.qase.outputs.qase_run_id }}
-        if: ${{ (!cancelled()) && steps.ready-to-test.outcome == 'success' }}
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) }}
         run: |
           REPORT=$(go run ${{ env.QASE_HELPER }} -publish)
           echo "${REPORT}"
-  
+
       - name: Delete Qase Run if job has been cancelled
+        id: delete-qase-run-on-cancel
         env:
           QASE_RUN_ID: ${{ steps.qase.outputs.qase_run_id }}
-        if: ${{ cancelled() }}
+        if: ${{ contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled') }}
         run: go run ${{ env.QASE_HELPER }} -delete
 
       - name: Collect logs
         id: generate-logs
-        if: ${{ (!cancelled()) && steps.ready-to-test.outcome == 'success' }}
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) }}
         run: |
           chmod +x ${{ env.RANCHER_LOG_COLLECTOR }}
           bash ${{ env.RANCHER_LOG_COLLECTOR }}
 
       - name: Upload cluster logs
-        if: ${{ (!cancelled()) &&  steps.generate-logs.outcome == 'success' }}
+        id: upload-logs
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) }}
         uses: actions/upload-artifact@v4
         with:
           name: support-logs-${{ inputs.hosted_provider }}
@@ -279,19 +296,14 @@ jobs:
           if-no-files-found: ignore
 
       - name: Add summary
-        if: ${{ (!cancelled()) }}
+        id: summary
+        if: ${{ (!contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled')) }}
         run: |
           # Add summary
           echo "## General information" >> ${GITHUB_STEP_SUMMARY}
           echo "Rancher Manager Version: ${{ inputs.rancher_version }}" >> ${GITHUB_STEP_SUMMARY}
           echo "K3s on Rancher Manager: ${{ inputs.k3s_version }}" >> ${GITHUB_STEP_SUMMARY}
           echo "Downstream ${{ inputs.hosted_provider }} version: ${{ inputs.downstream_k8s_minor_version }}" >> ${GITHUB_STEP_SUMMARY}
-      # Just to signify that something has been cancelled, and it's not useful to check the test
-      # DEBUG step to check if the job was abruptly cancelled
-      # To be removed
-      - name: Specify in summary if something has been cancelled
-        if: ${{ cancelled() }}
-        run: echo "# TEST CANCELLED! ${{ inputs.hosted_provider }}" >> ${GITHUB_STEP_SUMMARY}
 
   delete-runner:
     if: ${{ always() && inputs.destroy_runner == true }}
@@ -315,3 +327,7 @@ jobs:
           gcloud --quiet compute instances delete ${{ needs.create-runner.outputs.runner }} \
             --delete-disks all \
             --zone ${{ env.GCP_RUNNER_ZONE }}
+      # Just to signify that something has been cancelled and it's not useful to check the test
+      - name: Specify in summary if something has been cancelled
+        if: ${{ always() && contains(needs.installation-and-e2e-tests.outputs.steps_status, 'cancelled') }}
+        run: echo "# TEST CANCELLED!" >> ${GITHUB_STEP_SUMMARY}
