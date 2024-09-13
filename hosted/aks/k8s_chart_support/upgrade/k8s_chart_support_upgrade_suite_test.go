@@ -35,10 +35,7 @@ func TestK8sChartSupportUpgrade(t *testing.T) {
 	RunSpecs(t, "K8sChartSupportUpgrade Suite")
 }
 
-var _ = SynchronizedBeforeSuite(func() []byte {
-	helpers.CommonSynchronizedBeforeSuite()
-	return nil
-}, func() {
+var _ = BeforeEach(func() {
 	Expect(helpers.RancherVersion).ToNot(BeEmpty())
 	// For upgrade tests, the rancher version should not be an unreleased version (for e.g. 2.9-head)
 	Expect(helpers.RancherVersion).ToNot(ContainSubstring("head"))
@@ -54,13 +51,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	By(fmt.Sprintf("Installing Rancher Manager v%s", helpers.RancherVersion), func() {
 		helpers.DeployRancherManager(helpers.RancherVersion, true)
 	})
-
+	helpers.CommonSynchronizedBeforeSuite()
 	ctx = helpers.CommonBeforeSuite()
-})
 
-var _ = BeforeEach(func() {
-	var err error
 	clusterName = namegen.AppendRandomString(helpers.ClusterNamePrefix)
+	var err error
 	// For k8s chart support upgrade we want to begin with the default k8s version; we will upgrade rancher and then upgrade k8s to the default available there.
 	k8sVersion, err = helper.GetK8sVersion(ctx.RancherAdminClient, ctx.CloudCred.ID, location, false)
 	Expect(err).To(BeNil())
