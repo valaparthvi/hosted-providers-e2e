@@ -1,4 +1,6 @@
-name: rancher-upgrade.yml
+name: Rancher Upgrade
+run-name: [${{ inputs.hosted_provider }}] Upgrade Rancher ${{ inputs.rancher_version }} to ${{ inputs.upgrade_rancher_version }}
+
 on:
   workflow_dispatch:
     inputs:
