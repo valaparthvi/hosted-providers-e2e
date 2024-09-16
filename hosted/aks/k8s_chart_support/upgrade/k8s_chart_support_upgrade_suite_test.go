@@ -38,7 +38,7 @@ func TestK8sChartSupportUpgrade(t *testing.T) {
 var _ = BeforeEach(func() {
 	Expect(helpers.RancherVersion).ToNot(BeEmpty())
 	// For upgrade tests, the rancher version should not be an unreleased version (for e.g. 2.9-head)
-	Expect(helpers.RancherVersion).ToNot(ContainSubstring("head"))
+	Expect(helpers.RancherVersion).ToNot(ContainSubstring("devel"))
 
 	Expect(helpers.RancherUpgradeVersion).ToNot(BeEmpty())
 	Expect(helpers.K8sUpgradedMinorVersion).ToNot(BeEmpty())
