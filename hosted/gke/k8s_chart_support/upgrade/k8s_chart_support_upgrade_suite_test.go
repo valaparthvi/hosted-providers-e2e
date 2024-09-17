@@ -38,13 +38,13 @@ func TestK8sChartSupportUpgrade(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	Expect(helpers.RancherVersion).ToNot(BeEmpty(), "RANCHER_VERSION should not be empty")
+	Expect(helpers.RancherVersion).ToNot(BeEmpty())
 	// For upgrade tests, the rancher version should not be an unreleased version (for e.g. 2.9-head)
-	Expect(helpers.RancherVersion).ToNot(ContainSubstring("devel"), "RANCHER_VERSION cannot be an unreleased version")
+	Expect(helpers.RancherVersion).ToNot(ContainSubstring("devel"))
 
-	Expect(helpers.RancherUpgradeVersion).ToNot(BeEmpty(), "RANCHER_UPGRADE_VERSION cannot be empty")
-	Expect(helpers.K8sUpgradedMinorVersion).ToNot(BeEmpty(), "DOWNSTREAM_K8S_MINOR_VERSION cannot be empty")
-	Expect(helpers.Kubeconfig).ToNot(BeEmpty(), "KUBECONFIG cannot be empty")
+	Expect(helpers.RancherUpgradeVersion).ToNot(BeEmpty())
+	Expect(helpers.K8sUpgradedMinorVersion).ToNot(BeEmpty())
+	Expect(helpers.Kubeconfig).ToNot(BeEmpty())
 
 	By("Adding the necessary chart repos", func() {
 		helpers.AddRancherCharts()
