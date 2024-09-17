@@ -168,9 +168,13 @@ func commonchecks(ctx *helpers.Context, cluster *management.Cluster, clusterName
 
 		cluster, err = helper.UpgradeClusterKubernetesVersion(cluster, *latestVersion, ctx.RancherAdminClient, true)
 		Expect(err).To(BeNil())
-		err = clusters.WaitClusterToBeUpgraded(ctx.RancherAdminClient, cluster.ID)
-		Expect(err).To(BeNil())
-		Expect(cluster.EKSConfig.KubernetesVersion).To(BeEquivalentTo(latestVersion))
+		// Does not upgrade noodegroup version since using custom LT, skip for imported cluster
+		if !helpers.IsImport {
+			By("upgrading the NodeGroups", func() {
+				cluster, err = helper.UpgradeNodeKubernetesVersion(cluster, *latestVersion, ctx.RancherAdminClient, true, true)
+				Expect(err).To(BeNil())
+			})
+		}
 	})
 
 	var downgradeVersion string
@@ -182,18 +186,14 @@ func commonchecks(ctx *helpers.Context, cluster *management.Cluster, clusterName
 		helpers.DowngradeProviderChart(downgradeVersion)
 	})
 
-	By("making a change to the cluster to validate functionality after chart downgrade", func() {
+	By("making a change to the cluster (scaling the node up) to validate functionality after chart downgrade", func() {
 		var err error
-		cluster, err = helper.UpgradeNodeKubernetesVersion(cluster, *latestVersion, ctx.RancherAdminClient, true, false)
+		initialNodeCount := *cluster.EKSConfig.NodeGroups[0].DesiredSize
+		const (
+			increaseBy = 1
+		)
+		cluster, err = helper.ScaleNodeGroup(cluster, ctx.RancherAdminClient, initialNodeCount+increaseBy, true, true)
 		Expect(err).To(BeNil())
-		if !cluster.EKSConfig.Imported {
-			// TODO Does not upgrade version for imported cluster, since they use custom Launch Templates
-			err = clusters.WaitClusterToBeUpgraded(ctx.RancherAdminClient, cluster.ID)
-			Expect(err).To(BeNil())
-			for _, ng := range cluster.EKSConfig.NodeGroups {
-				Expect(ng.Version).To(BeEquivalentTo(latestVersion))
-			}
-		}
 	})
 
 	By("uninstalling the operator chart", func() {

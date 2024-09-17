@@ -187,7 +187,7 @@ func commonChartSupportUpgrade(ctx *helpers.Context, cluster *management.Cluster
 		helpers.DowngradeProviderChart(downgradeVersion)
 	})
 
-	By("making a change to the cluster to validate functionality after chart downgrade", func() {
+	By("making a change to the cluster (scaling nodepool up) to validate functionality after chart downgrade", func() {
 		initialNodeCount := *cluster.GKEConfig.NodePools[0].InitialNodeCount
 		var err error
 		cluster, err = helper.ScaleNodePool(cluster, ctx.RancherAdminClient, initialNodeCount+1, true, true)

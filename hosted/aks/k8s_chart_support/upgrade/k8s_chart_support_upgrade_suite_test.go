@@ -175,7 +175,7 @@ func commonchecks(ctx *helpers.Context, cluster *management.Cluster, clusterName
 		helpers.DowngradeProviderChart(downgradeVersion)
 	})
 
-	By("making a change to the cluster to validate functionality after chart downgrade", func() {
+	By("making a change to the cluster (upgrade nodepool k8s version) to validate functionality after chart downgrade", func() {
 		var err error
 		cluster, err = helper.UpgradeNodeKubernetesVersion(cluster, latestK8sVersion, ctx.RancherAdminClient, true, true)
 		Expect(err).To(BeNil())
