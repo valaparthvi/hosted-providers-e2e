@@ -402,10 +402,10 @@ func ContainsString(slice []string, item string) bool {
 	return false
 }
 
-func GetRancherVersions() (string, string, string) {
+func GetRancherVersions(rancherFullVersion string) (string, string, string) {
 	var rancherChannel, rancherVersion, rancherHeadVersion string
 	// Extract Rancher Manager channel/version to install
-	s := strings.Split(os.Getenv("RANCHER_VERSION"), "/")
+	s := strings.Split(rancherFullVersion, "/")
 	Expect(len(s)).To(BeNumerically(">=", 2), "RANCHER_VERSION must contain at least two strings separated by '/'")
 	rancherChannel = s[0]
 	rancherVersion = s[1] // This can be either a string like "2.9.3[-rc4]", "devel", or "latest"
@@ -413,4 +413,13 @@ func GetRancherVersions() (string, string, string) {
 		rancherHeadVersion = s[2]
 	}
 	return rancherChannel, rancherVersion, rancherHeadVersion
+}
+
+// GetRancherServerVersion returns the value of `server-version` Setting
+func GetRancherServerVersion(client *rancher.Client) (string, error) {
+	serverVersion, err := client.Management.Setting.ByID("server-version")
+	if err != nil {
+		return "", err
+	}
+	return serverVersion.Value, nil
 }
