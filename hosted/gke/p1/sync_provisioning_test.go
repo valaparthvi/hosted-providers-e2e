@@ -40,7 +40,7 @@ var _ = Describe("SyncProvisioning", func() {
 				}
 				k8sVersion, err := helper.GetK8sVersion(ctx.RancherAdminClient, project, ctx.CloudCredID, zone, "", testData.isUpgrade)
 				Expect(err).NotTo(HaveOccurred())
-				GinkgoLogr.Info(fmt.Sprintf("Using K8s version %s for cluster %s", k8sVersion, clusterName))
+				GinkgoLogr.Info(fmt.Sprintf("Using K8s version v%s for cluster %s", k8sVersion, clusterName))
 
 				cluster, err = helper.CreateGKEHostedCluster(ctx.RancherAdminClient, clusterName, ctx.CloudCredID, k8sVersion, zone, "", project, nil)
 				Expect(err).To(BeNil())
@@ -57,7 +57,7 @@ var _ = Describe("SyncProvisioning", func() {
 				}
 			})
 
-			FIt(testData.testTitle, func() {
+			It(testData.testTitle, func() {
 				testCaseID = testData.qaseID
 				testData.testBody(cluster, ctx.RancherAdminClient)
 			})
